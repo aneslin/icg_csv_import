@@ -468,8 +468,12 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   if ($attr) {
     $attrArray = _parseAttributes($attr);
     foreach ($attrArray as $name => $value) {
-      $attributes[$name] = $doc->createAttribute($name);
-      $attributes[$name]->value = $value;
+      try {
+        $attributes[$name] = $doc->createAttribute($name);
+        $attributes[$name]->value = $value;
+      } catch (Exception $e) { // catch all exceptions
+        drupal_set_message("Attribute error in '$name'. Message: " . $e->getMessage(), 'error');
+      }
     }
   }
 
