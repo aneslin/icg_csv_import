@@ -36,7 +36,7 @@ The batch process used to import CSV data is file-driven, with most of the neces
 
 ### CSV File Structure
 
-As indicated above, this module relies on a suitably structured CSV file to drive its batch processing, but the structure of tht file can be relatively flexible.  A small sample of CSV data from a fossils collection in the Grinnell College Geology Collection is used, below, to illustrate features of this CSV file structure.  The samples here are annotated screen grabs of the data as it appears in Excel, but any means of editing/preparing CSV data may be employed.
+ This module relies on a suitably structured CSV file to drive its batch processing. The structure of the file can be relatively flexible. A small sample of CSV data from a fossils collection in the Grinnell College Geology Collection is used, below, to illustrate features of this CSV file structure. The examples below show the CSV file being edited in Microsoft Excel.  While Excel is an option, one may use any program capable of editing a CSV or text document.  
 
 A good example of a CSV file can be found in Google Sheets at https://docs.google.com/spreadsheets/d/159ry2KDKYLHssGjPi3ypNtOy6IN6cgvNLg1O2TsFuTI/edit?usp=sharing.  This 'template' also includes a bit of documenation describing the process and best practices.
 
