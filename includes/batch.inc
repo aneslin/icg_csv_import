@@ -7,52 +7,6 @@
  */
 
 /**
- * David's readCSV() function.
- *
- * @param $csv_file
- * @return bool
- *
-function icg_csv_import_readCSV($csv_file, $parent, $ns) {
-ini_set("auto_detect_line_endings", true);
-$csv_data = array();
-$rowcount = 0;
-
-//open csv file
-if (($file_handle = fopen($csv_file, "r")) !== FALSE) {
-
-//read first line to get header names and number of headers
-$csv_headers = fgetcsv($file_handle, 0, "/t");
-$csv_headers_number = count($csv_headers);
-$entry = array();
-
-//check to see if number of row data matches number of headers
-while (($row = fgetcsv($file_handle, 0, "/t")) !== FALSE) {
-$number_of_row_data = count($row);
-
-//if numbers match, enter into arrays
-if ($number_of_row_data == $csv_headers_number) {
-$entry = $row;
-$pid = icg_csv_import_batch_item($csv_headers, $entry, $parent, $ns, $inactive=FALSE);
-}
-//if numbers don't match
-else {
-echo("CSV Reader: Invalid number of columns at line " . ($rowcount + 2) . " (, row " . ($rowcount + 1) . ") in ".$csv_file.". Expected=$csv_headers_number; Got=$number_of_row_data");
-return FALSE;
-}
-$rowcount++;
-}
-
-//close file connection
-fclose($file_handle);
-}
-else {
-echo("CSV Reader: Could not read CSV file: ".$csv_file.".csv");
-return FALSE;
-}
-return TRUE;
-} */
-
-/**
  * Handle form submission. Read the CSV into a set of batch operations
  * and fire them off.
  *
@@ -484,13 +438,14 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
 
   // Trim the $xpath and grab the next element name in the $xpath
   $trimmed = trim($xpath, '/');
-  $parts = _multiexplode(array('/','[',']'), $trimmed);
+//  $parts = _multiexplode(array('/','[',']'), $trimmed);
+  $parts = _multiexplode(array('/','['), $trimmed);
 
   // Pop the $element off of the $parts array
   $element = array_shift($parts);
   // dpr("element:$element\n");
 
-  $index = $attr = $attribute = FALSE;
+  $index = $attr = $attributes = FALSE;
 
   // Look ahead for a node $index in $parts.  If none is present assume $index = 1.
   if (isset($parts[0]) && _is_unsigned_integer($parts[0])) {    // element has an index
@@ -501,21 +456,28 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
 
   // Look ahead for an $attribute in $parts
   if (isset($parts[0]) && _startsWith($parts[0], '@')) {   // element has an attribute
-    list($attr, $val) = explode('=', $parts[0], 2);
-    $value = trim($val,"'");
+    $attr = trim($parts[0],"@] ");
+    // list($attr, $val) = explode('=', $parts[0], 2);
+    // $value = trim($val,"'");
     // dpr("attribute:$attr=$value\n");
     array_shift($parts);
   }
 
-  // If there is an $attribute, build it's XML.
+  // If there are one or more $attributes, build their XML.
+  $attributes = array( );
   if ($attr) {
-    $attribute = $doc->createAttribute(trim($attr,"@"));
-    $attribute->value = $value;
+    $attrArray = _parseAttributes($attr);
+    foreach ($attrArray as $name => $value) {
+      $attributes[$name] = $doc->createAttribute($name);
+      $attributes[$name]->value = $value;
+    }
   }
 
   // Append $element to $previous to make a new $current xpath
   if ($element) { $current = $previous.'/'.$element."[$index]"; }
-  if ($attr) { $current .= "[$attr='$value']"; }
+  if ($attr) { $current .= "[@$attr]"; }
+
+  // $current .= "[$attr='$value']"; }
   // dpr("current:$current\n");
 
   // If this is not the end of the $xpath, don't set $data!
@@ -541,14 +503,14 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
     // drupal_set_message("...................... found parent '$parent->nodeName'.", 'info');
   } else {    // $current not found, append a new child node to $parent and make it the new $parent.
     if (!is_array($text)) {
-      $parent = _make_node($doc, $parent, $element, $attribute, $text);
+      $parent = _make_node($doc, $parent, $element, $attributes, $text);
       // drupal_set_message("...................... created node on parent '$parent->nodeName'.", 'info');
     } else {   // multiple $data values exist...make a node from the first, then copy that node for each remaining
       $original_parent = $parent;
-      $parent = _make_node($doc, $parent, $element, $attribute, $text[0]);
+      $parent = _make_node($doc, $parent, $element, $attributes, $text[0]);
       $n = count($text);
       for ($i=1; $i<$n; $i++) {
-        _make_node($doc, $original_parent, $element, $attribute, $text[$i]);
+        _make_node($doc, $original_parent, $element, $attributes, $text[$i]);
         // drupal_set_message("...................... created node on parent '$parent->nodeName'.", 'info');
       }
     }
@@ -716,11 +678,11 @@ function _make_derivatives($object) {
  * @param $doc
  * @param $parent
  * @param $element
- * @param $attribute
+ * @param $attributes - Array of name->value attribute pairs.
  * @param null $value
  * @return DOMElement - Returns the new XML element.
  */
-function _make_node($doc, $parent, $element, $attribute, $value=NULL) {
+function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
   // if (empty($value) && empty($attribute)) { return $parent; }  // no $value or $attribute, return the $parent
 
   try {
@@ -733,8 +695,10 @@ function _make_node($doc, $parent, $element, $attribute, $value=NULL) {
 
   $text = $doc->createTextNode($value);   // save $value as new $text node
   $node->appendChild($text);   // attach the $value to the new $node
-  if ($attribute) {
-    $node->appendChild($attribute);     // attach $attribute to the new $node
+  if ($attributes) {
+    foreach ($attributes as $attribute) {
+      $node->appendChild($attribute);     // attach $attribute to the new $node
+    }
   }
   $node = $parent->appendChild($node);  // attach the new $node to $parent and return it
   return $node;
@@ -803,3 +767,20 @@ function _has_index($txt) {
   return FALSE;
 }
 
+/**
+ * Parse a [bracketed] single or multiple attribute clause of the form
+ * general form [@single='a'] or [@one='a' and @two='b' and @three='c'].
+ *
+ * @param $attr string - A [bracketed] attribute spec.
+ * @return array - Attribute name->value pairs.
+ */
+function _parseAttributes($attr) {
+  $attrubutes = array();
+  $attrs = explode(' and ', $attr);
+  foreach ($attrs as $a) {
+    $pair = trim($a, '@');
+    list($name, $val) = explode('=', $pair);
+    $attributes[$name] = trim(trim($val,"'"),'"');
+  }
+  return $attributes;
+}
