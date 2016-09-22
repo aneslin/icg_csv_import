@@ -7,7 +7,6 @@ the MODS metadata and related information required to create one Islandora/Fedor
 
 -All bugs, feature requests and improvement suggestions are tracked at the [DuraSpace JIRA](https://jira.duraspace.org/browse/ISLANDORA).-
 
-
 ## Requirements
 
 This module requires the following modules/libraries:
